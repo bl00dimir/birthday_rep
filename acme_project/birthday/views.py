@@ -1,15 +1,70 @@
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404
+from django.views.generic import (
+    CreateView, DeleteView, DetailView, ListView, UpdateView
+)
+from django.urls import reverse_lazy
+
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 from .forms import BirthdayForm
 from .models import Birthday
 from .utils import calculate_birthday_countdown
 
-from django.core.paginator import Paginator
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 
-from django.views.generic import ListView
+
+@login_required
+def simple_view(request):
+    return HttpResponse('Страница для залогиненных пользователей!')
 
 
-def delete_birthday(request, pk):
+class BirthdayListView(ListView):
+    model = Birthday
+    ordering = 'id'
+    paginate_by = 10
+
+
+class BirthdayCreateView(LoginRequiredMixin, CreateView):
+    model = Birthday
+    form_class = BirthdayForm
+
+    def form_valid(self, form):
+        # Присвоить полю author объект пользователя из запроса.
+        form.instance.author = self.request.user
+        # Продолжить валидацию, описанную в форме.
+        return super().form_valid(form)
+
+
+class BirthdayUpdateView(LoginRequiredMixin, UpdateView):
+    model = Birthday
+    form_class = BirthdayForm
+
+    def dispatch(self, request, *args, **kwargs):
+        # Получаем объект по первичному ключу и автору или вызываем 404 ошибку.
+        get_object_or_404(Birthday, pk=kwargs['pk'], author=request.user)
+        # Если объект был найден, то вызываем родительский метод, 
+        # чтобы работа CBV продолжилась.
+        return super().dispatch(request, *args, **kwargs)
+
+
+class BirthdayDeleteView(LoginRequiredMixin, DeleteView):
+    model = Birthday
+    success_url = reverse_lazy('birthday:list')
+
+
+class BirthdayDetailView(DetailView):
+    model = Birthday
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['birthday_countdown'] = calculate_birthday_countdown(
+            self.object.birthday
+        )
+        return context
+
+
+'''def delete_birthday(request, pk):
     # Получаем объект модели или выбрасываем 404 ошибку.
     instance = get_object_or_404(Birthday, pk=pk)
     # В форму передаём только объект модели;
@@ -23,11 +78,11 @@ def delete_birthday(request, pk):
         # ...и переадресовываем пользователя на страницу со списком записей.
         return redirect('birthday:list')
     # Если был получен GET-запрос — отображаем форму.
-    return render(request, 'birthday/birthday.html', context)
+    return render(request, 'birthday/birthday.html', context)'''
 
 
 # Добавим опциональный параметр pk.
-def birthday(request, pk=None):
+'''def birthday(request, pk=None):
     if pk is not None:
         instance = get_object_or_404(Birthday, pk=pk)
     else:
@@ -47,10 +102,10 @@ def birthday(request, pk=None):
             form.cleaned_data['birthday']
         )
         context.update({'birthday_countdown': birthday_countdown})
-    return render(request, 'birthday/birthday.html', context) 
+    return render(request, 'birthday/birthday.html', context)'''
 
 
-# def birthday_list(request):
+''' def birthday_list(request):
     # Получаем список всех объектов с сортировкой по id.
     birthdays = Birthday.objects.order_by('id')
     # Создаём объект пагинатора с количеством 10 записей на страницу.
@@ -65,13 +120,4 @@ def birthday(request, pk=None):
     # Вместо полного списка объектов передаём в контекст 
     # объект страницы пагинатора
     context = {'page_obj': page_obj}
-    return render(request, 'birthday/birthday_list.html', context)
-
-
-class BirthdayListView(ListView):
-    # Указываем модель, с которой работает CBV...
-    model = Birthday
-    # ...сортировку, которая будет применена при выводе списка объектов:
-    ordering = 'id'
-    # ...и даже настройки пагинации:
-    paginate_by = 10
+    return render(request, 'birthday/birthday_list.html', context)'''
