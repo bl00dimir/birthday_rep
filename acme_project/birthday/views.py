@@ -6,6 +6,8 @@ from .utils import calculate_birthday_countdown
 
 from django.core.paginator import Paginator
 
+from django.views.generic import ListView
+
 
 def delete_birthday(request, pk):
     # Получаем объект модели или выбрасываем 404 ошибку.
@@ -48,7 +50,7 @@ def birthday(request, pk=None):
     return render(request, 'birthday/birthday.html', context) 
 
 
-def birthday_list(request):
+# def birthday_list(request):
     # Получаем список всех объектов с сортировкой по id.
     birthdays = Birthday.objects.order_by('id')
     # Создаём объект пагинатора с количеством 10 записей на страницу.
@@ -64,3 +66,12 @@ def birthday_list(request):
     # объект страницы пагинатора
     context = {'page_obj': page_obj}
     return render(request, 'birthday/birthday_list.html', context)
+
+
+class BirthdayListView(ListView):
+    # Указываем модель, с которой работает CBV...
+    model = Birthday
+    # ...сортировку, которая будет применена при выводе списка объектов:
+    ordering = 'id'
+    # ...и даже настройки пагинации:
+    paginate_by = 10
